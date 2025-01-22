@@ -1,148 +1,103 @@
-# app.py
+from dotenv import load_dotenv
+import os
 import streamlit as st
-import pandas as pd
-from datetime import datetime
-import json
 from parsers.gpt_parser import GPTParser
-from parsers.mistral_parser import MistralParser
 from parsers.regex_parser import RegexParser
-from utils.metrics import calculate_metrics
-from utils.visualization import visualize_differences
-from utils.data_handler import save_results, load_sample_alerts
+from parsers.ollama_parser import OllamaParser
+from datetime import datetime
 
-class PSAnalyzerApp:
-    def __init__(self):
-        st.set_page_config(page_title="PS Analyzer", layout="wide")
-        self.initialize_session_state()
-        
-    def initialize_session_state(self):
-        if 'test_results' not in st.session_state:
-            st.session_state.test_results = []
-            
-    def main(self):
-        self.render_sidebar()
-        self.render_main_content()
+load_dotenv()
 
-    def render_sidebar(self):
-        with st.sidebar:
-            st.title("PS Analyzer Settings")
-            
-            # Model Selection
-            st.subheader("Parser Selection")
-            selected_models = st.multiselect(
-                "Choose Models to Compare",
-                ["GPT-3.5", "GPT-4", "Mistral", "Current Regex"],
-                default=["GPT-3.5", "Current Regex"]
-            )
-            
-            # Sample Data
-            st.subheader("Test Data")
-            data_option = st.radio(
-                "Choose Data Source",
-                ["Sample Alerts", "Custom Input", "Batch Testing"]
-            )
-            
-            # Save results option
-            if st.button("Export Results"):
-                self.export_results()
+def initialize_session_state():
+    if 'results' not in st.session_state:
+        st.session_state.results = {
+            'regex': {'result': None, 'time': None},
+            'gpt': {'result': None, 'time': None},
+            'ollama': {'result': None, 'time': None}
+        }
 
-    def render_main_content(self):
-        st.title("MTA Planned Service Analyzer")
-        
-        # Input Section
-        with st.expander("Input Configuration", expanded=True):
-            col1, col2 = st.columns([2, 1])
-            
-            with col1:
-                alert_text = st.text_area(
-                    "Enter PS Alert Text",
-                    height=200,
-                    placeholder="[M] Service changes..."
-                )
-                
-            with col2:
-                st.subheader("Alert Stats")
-                if alert_text:
-                    st.write(f"Characters: {len(alert_text)}")
-                    st.write(f"Lines mentioned: {len(alert_text.split('['))}")
-        
-        # Analysis Section
-        if st.button("Analyze Alert"):
-            if alert_text:
-                self.run_analysis(alert_text)
-                
-    def run_analysis(self, text):
-        with st.spinner("Analyzing alert..."):
-            # Create tabs for different views
-            tab1, tab2, tab3 = st.tabs([
-                "Parser Comparison", 
-                "Visualization", 
-                "Detailed Analysis"
-            ])
-            
-            results = self.get_parsing_results(text)
-            
-            with tab1:
-                self.show_parser_comparison(results)
-                
-            with tab2:
-                self.show_visualizations(results)
-                
-            with tab3:
-                self.show_detailed_analysis(results)
-                
-    def get_parsing_results(self, text):
-        results = {}
-        for model in ["gpt", "mistral", "regex"]:
-            try:
-                if model == "gpt":
-                    parser = GPTParser()
-                elif model == "mistral":
-                    parser = MistralParser()
-                else:
-                    parser = RegexParser()
-                    
-                start_time = datetime.now()
-                result = parser.parse(text)
-                end_time = datetime.now()
-                
-                results[model] = {
-                    "result": result,
-                    "processing_time": (end_time - start_time).total_seconds(),
-                    "success": True
-                }
-            except Exception as e:
-                results[model] = {
-                    "result": None,
-                    "error": str(e),
-                    "success": False
-                }
-        return results
+def display_results():
+    col1, col2, col3 = st.columns(3)
     
-    def show_parser_comparison(self, results):
-        cols = st.columns(len(results))
-        for idx, (model, data) in enumerate(results.items()):
-            with cols[idx]:
-                st.subheader(f"{model.upper()}")
-                if data["success"]:
-                    st.json(data["result"])
-                    st.metric(
-                        "Processing Time", 
-                        f"{data['processing_time']:.3f}s"
-                    )
-                else:
-                    st.error(f"Error: {data['error']}")
-                    
-    def export_results(self):
-        if st.session_state.test_results:
-            df = pd.DataFrame(st.session_state.test_results)
-            st.download_button(
-                "Download Results CSV",
-                df.to_csv(index=False),
-                "ps_analysis_results.csv",
-                "text/csv"
-            )
+    # Regex Results
+    with col1:
+        if st.session_state.results['regex']['result'] is not None:
+            st.subheader("Regex Parser")
+            st.json(st.session_state.results['regex']['result'])
+            st.metric("Processing Time", f"{st.session_state.results['regex']['time']:.3f}s")
+    
+    # GPT Results        
+    with col2:
+        if st.session_state.results['gpt']['result'] is not None:
+            st.subheader("GPT Parser")
+            st.json(st.session_state.results['gpt']['result'])
+            st.metric("Processing Time", f"{st.session_state.results['gpt']['time']:.3f}s")
+    
+    # Ollama Results
+    with col3:
+        if st.session_state.results['ollama']['result'] is not None:
+            st.subheader("Ollama Parser")
+            st.json(st.session_state.results['ollama']['result'])
+            st.metric("Processing Time", f"{st.session_state.results['ollama']['time']:.3f}s")
+
+def main():
+    initialize_session_state()
+    st.title("PS Parser Comparison")
+    
+    # Sample alert toggle
+    use_sample = st.checkbox("Use sample alert")
+    
+    if use_sample:
+        sample_alert = """[M] Service changes
+No M service between Essex St and Forest Hills-71 Av
+M trains run between Metropolitan Av and Essex St
+[J] trains provide alternate service"""
+        alert_text = st.text_area("Alert text", value=sample_alert, height=150)
+    else:
+        alert_text = st.text_area("Enter alert text", height=150)
+
+    # Buttons for each parser
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("Run Regex Parser"):
+            regex_parser = RegexParser()
+            with st.spinner("Parsing with Regex..."):
+                start_time = datetime.now()
+                result = regex_parser.parse(alert_text)
+                process_time = (datetime.now() - start_time).total_seconds()
+                st.session_state.results['regex'] = {
+                    'result': result,
+                    'time': process_time
+                }
+    
+    with col2:
+        if st.button("Run GPT Parser"):
+            gpt_parser = GPTParser()
+            with st.spinner("Parsing with GPT..."):
+                start_time = datetime.now()
+                result = gpt_parser.parse(alert_text)
+                process_time = (datetime.now() - start_time).total_seconds()
+                st.session_state.results['gpt'] = {
+                    'result': result,
+                    'time': process_time
+                }
+    
+    with col3:
+        if st.button("Run Ollama Parser"):
+            ollama_parser = OllamaParser()
+            with st.spinner("Parsing with Ollama..."):
+                start_time = datetime.now()
+                result = ollama_parser.parse(alert_text)
+                process_time = (datetime.now() - start_time).total_seconds()
+                st.session_state.results['ollama'] = {
+                    'result': result,
+                    'time': process_time
+                }
+    
+    # Display all results
+    st.markdown("---")
+    display_results()
 
 if __name__ == "__main__":
-    app = PSAnalyzerApp()
-    app.main()
+    main()
