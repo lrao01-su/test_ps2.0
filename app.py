@@ -40,9 +40,8 @@ def display_results():
             st.json(st.session_state.results['ollama']['result'])
             st.metric("Processing Time", f"{st.session_state.results['ollama']['time']:.3f}s")
 
-def main():
+def show_parser_comparison():
     initialize_session_state()
-    st.title("PS Parser Comparison")
     
     # Sample alert toggle
     use_sample = st.checkbox("Use sample alert")
@@ -98,6 +97,24 @@ M trains run between Metropolitan Av and Essex St
     # Display all results
     st.markdown("---")
     display_results()
+
+def main():
+    st.set_page_config(page_title="PS Parser", layout="wide")
+    
+    # Add sidebar navigation
+    with st.sidebar:
+        st.title("Navigation")
+        page = st.radio(
+            "Select Page",
+            ["Parser Comparison", "PS Data Viewer"]
+        )
+    
+    if page == "Parser Comparison":
+        st.title("PS Parser Comparison")
+        show_parser_comparison()
+    else:
+        st.title("PS Data Viewer")
+        st.warning("Please navigate to the PS Data Viewer page using the pages dropdown in the sidebar.")
 
 if __name__ == "__main__":
     main()
