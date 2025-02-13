@@ -1,4 +1,5 @@
 # parsers/gpt_parser.py
+import streamlit as st
 from typing import Dict
 from openai import OpenAI
 import json
@@ -8,9 +9,14 @@ from dotenv import load_dotenv
 class GPTParser:
     def __init__(self):
         load_dotenv()
-        api_key = os.getenv("OPENAI_API_KEY")
+        try:
+        # First try to get API key from Streamlit secrets
+            api_key = st.secrets["OPENAI_API_KEY"]
+        except (KeyError, AttributeError):
+        # If not in Streamlit or key not in secrets, try environment variable
+            api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError("OpenAI API key not found! Please check your .env file")
+            raise ValueError("OpenAI API key not found! Please check your .env file or Streamlit secrets")
         self.client = OpenAI(api_key=api_key)
     
     def parse(self, text: str) -> Dict:
