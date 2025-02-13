@@ -47,10 +47,13 @@ def show_parser_comparison():
     use_sample = st.checkbox("Use sample alert")
     
     if use_sample:
-        sample_alert = """[M] Service changes
-No M service between Essex St and Forest Hills-71 Av
-M trains run between Metropolitan Av and Essex St
-[J] trains provide alternate service"""
+        sample_alert = """[F] is rerouted in Manhattan and Brooklyn
+        Feb 3 - 7 and Feb 10 - 14, Mon to Fri, 9:30 PM to 5:00 AM
+        No [F] service at 57 St, 47-50 Sts-Rockefeller Ctr, 42 St-Bryant Pk, 23 St, 14 St, W 4 St-Wash Sq, Broadway-Lafayette St, 2 Av, Delancey St-Essex St, East Broadway and York St.
+        [F] runs via the [Q] between Lexington Av/63 St and 57 St-7 Av and via the [R] to/from 36 St in Brooklyn and via the [D] to/from Coney Island-Stillwell Av.
+        [D runs via the [C] between 145 St and Jay St-MetroTechand replaces [F] service in Brooklyn to/from Coney Island-Stillwell Av.
+        Free shuttle buses run between W 4 St-Wash Sq and East Broadway, stopping at Broadway-Lafayette St, 2 Av and Delancey St-Essex St.
+        """
         alert_text = st.text_area("Alert text", value=sample_alert, height=150)
     else:
         alert_text = st.text_area("Enter alert text", height=150)
